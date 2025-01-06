@@ -1,0 +1,63 @@
+# docker-compose.yml
+version: "3"
+services:
+  backend:
+    container_name: backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    depends_on:
+      - database
+    environment:
+      PORT: 3002
+      JWT_SECRET: jwtSecret
+      JWT_EXPIRATION: 1h
+      PG_USER: app_user
+      PG_PASSWORD: coding_test_password
+      PG_HOST: database
+      PG_PORT: 5432
+      PG_DATABASE: datatys_db
+      SECRET: test-dev-secret
+    volumes:
+      - ./backend:/app/
+      - /app/node_modules
+    working_dir: /app
+    command: npm run start
+    ports:
+      - "3002:3002"
+    networks:
+      - app-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173" # Default Vite dev server port
+    networks:
+      - app-network
+    environment:
+      - VITE_API_BASE_URL=http://localhost:3002
+
+  database:
+    container_name: database
+    image: timescale/timescaledb-postgis:latest-pg12
+    platform: linux/amd64
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: app_user
+      POSTGRES_PASSWORD: coding_test_password
+      POSTGRES_DB: datatys_db
+    volumes:
+      - ./sql/schema.sql:/docker-entrypoint-initdb.d/1-schema.sql
+      - ./sql/insert.sql:/docker-entrypoint-initdb.d/2-insert.sql
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
